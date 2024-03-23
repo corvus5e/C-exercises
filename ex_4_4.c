@@ -10,7 +10,6 @@
 #define MAXOP 100          // max size of operand or operator
 #define NUMBER '0'         // signal that a number was found
 #define FUNCTION '1'       // signal that a function/command was found 
-#define INVALID_INPUT '2'  // signal that invalid term is met
 
 int gettop(char[]);
 void push(double f);
