@@ -70,7 +70,7 @@ int main()
 #include <string.h>
 
 #define MAXVAL 100   /*Maximim depth of val stack*/
-#define FUNCTIONS_AMOUNT 3 // the amount of available functions
+#define FUNCTIONS_AMOUNT 4 // the amount of available functions
 
 int sp = 0;          /*next free stack position*/
 double val[MAXVAL];  /*value stack*/
@@ -79,6 +79,7 @@ char* available_functions[FUNCTIONS_AMOUNT] = {
                      "print", // print stack
                      "clear", // clear stack
                      "swap",  // swaps two top elements in the stack
+                     "duplicate"
                     };
 
 
@@ -86,6 +87,7 @@ char* available_functions[FUNCTIONS_AMOUNT] = {
 void print_stack(void);
 void clear_stack(void);
 void swap_top_two(void);
+void duplicate_stack(void);
 
 /*push: push f onto value stack*/
 void push(double f)
@@ -127,6 +129,10 @@ void execute_function(char function[])
                 case 2:
                     swap_top_two();
                 return;
+
+                case 3:
+                    duplicate_stack();
+                return;
             }
         }
     }
@@ -158,6 +164,22 @@ void swap_top_two(void)
     double tmp = val[sp - 1];
     val[sp - 1] = val[sp - 2];
     val[sp - 2] = tmp;
+}
+
+void duplicate_stack(void)
+{
+    if(2*sp - 1 < MAXVAL)
+    {
+        int curr_sp = sp;
+
+        for(int i = 0; i < curr_sp; i++)
+        {
+           push(val[i]);
+        }
+    }
+    else {
+        printf("Error: can't duplicate stack. Not enough space left\n"); 
+    }
 }
 
 
