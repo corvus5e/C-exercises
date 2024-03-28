@@ -215,6 +215,17 @@ void pow_function(void)
     push(pow(pop(), exp));
 }
 
+void handle_variable(char name) // assume the var name is correct, checked in gettop()
+{
+    var_index = name - 'A'; // saving current index
+    push(variables[var_index]);
+}
+
+void assign_variable(double value)
+{
+    variables[var_index] = value;
+}
+
 
 
 #include <ctype.h>
