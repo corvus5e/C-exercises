@@ -10,13 +10,14 @@
 int getch(void);
 void ungetch(int);
 /*ungets string*/
-void ungets(char s[]);
+void ungets(char s[], int len);
+void ungets_atomic(char s[]);
 
 int main()
 {
     char greeting[] = "Hello there! Print something\n";
 
-    ungets(greeting);
+    ungets_atomic(greeting);
 
     int c = 0;
 
@@ -27,7 +28,7 @@ int main()
 }
 
 // --- Implementation ---- //
-#define BUFERSIZE 10
+#define BUFERSIZE 100
 
 char buf[BUFERSIZE];/*buffer for ungetch*/
 int bufp = 0; /*next free position in buf*/
@@ -47,13 +48,28 @@ void ungetch(int c) /*push charackter back to input*/
 	}
 }
 
-/*This version puts all charackters of the string s until there is place in the buffer*/
-void ungets(char s[])
+/*This version puts up to `len` number of characters of the string `s` until there is place in the buffer*/
+void ungets(char s[], int len)
 {
-    int len = strlen(s);
-
     while(len)
     {
         ungetch(s[--len]);
     }
 }
+
+/*This version is "atomic" in a sence that if there is enoght space in the buffer,
+ * it will put the whole string `s`, otherwise will not place and an error is reported 
+ * This implementation should know about buf and bufp.*/
+void ungets_atomic(char s[])
+{
+    int len = strlen(s);
+
+    if(len <= BUFERSIZE - bufp)
+    {
+       ungets(s, len); 
+    }
+    else {
+        printf("Error: not enough space to unget string");
+    }
+}
+
