@@ -1,0 +1,20 @@
+"hello"	"lo" 1
+"hello"	"hello"	1
+"hello"	"world"	0
+"hello"	"o"	1
+"hello"	"" 1
+"hello"	"hello " 0
+"hello"	"he" 0
+"abcdef" "def"	1
+"abcdef" "abcdef"	1
+"abcdef" "cdef"	1
+"abcdef" "f" 1
+"abcdef" "g" 0
+"" "" 1
+"a"	"" 1
+"" "a" 0
+"abc" "bc" 1
+"abc" "ab"	0
+"a quick brown fox"	"fox" 1
+"a quick brown fox"	"quick"	0
+"test string" "string" 1
