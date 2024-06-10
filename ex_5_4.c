@@ -2,7 +2,7 @@
  * Exercise 5-4. Write the function strend(s,t), which returns 1 if the string t occurs at the
  * end of the string s, and zero otherwise.
  * */
-//TODO: also test impl from https://stackoverflow.com/questions/33532638/strend-function-in-c-using-pointers
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +14,17 @@
 #define QUOTE_STR "\""
 
 int strend(char *s, char *t);
+
+/*
+ * One pass stend from user 'fancity xia'
+ * https://stackoverflow.com/questions/33532638/strend-function-in-c-using-pointers
+ * */
+int fancity_xia_strend(char *s, char *t);
+
+/*
+ * My version of one pass stend
+ * */
+int improved_strend(char *s, char *t);
 
 /*
  * Reads a test case from standard input.
@@ -34,13 +45,15 @@ int main()
     while(readTestCaseFromStdIn(s, t, &expected_output))
     {
         printf("\"%s\" \"%s\" %d", s, t, expected_output);
-        int actual = strend(s, t);
+        //int actual = fancity_xia_strend(s, t);
+        //int actual = strend(s, t);
+        int actual = improved_strend(s, t);
         if(actual != expected_output)
         {
-            printf("\nFAILED actual = %d\n", actual);
+            printf(" FAILED actual = %d\n", actual);
         }
         else {
-            printf(" PASSED\n"); 
+            printf(" OK\n"); 
         }
     }
 }
@@ -133,3 +146,39 @@ int strend(char *s, char *t)
 
     return !(*s || *t); // *s == *t
 }
+
+int fancity_xia_strend(char *s, char *t){
+    while(*t & *s){
+        if(*t == *s){
+            t++;
+        }
+        s++;
+    }
+    return *t==*s;
+}
+
+int improved_strend(char *s, char *t)
+{
+    if(!*t) // null-terminated charecter is always the end of the valid C-string
+        return 1;
+
+    char *bt = t;
+
+    while(*s){
+        if(*s != *t)
+            ++s;
+        else{
+            while(*s && *t && *s == *t){
+                ++s;
+                ++t;
+            }
+            if(!*s && !*t)
+                return 1;
+        }
+
+        t = bt;
+    }
+
+    return 0;
+}
+
