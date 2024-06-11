@@ -162,7 +162,7 @@ int improved_strend(char *s, char *t)
     if(!*t) // null-terminated charecter is always the end of the valid C-string
         return 1;
 
-    for(char* curr_t = t; *s; curr_t=t){
+    for(char* curr_t = t; *s;){
         if(*s != *curr_t)
             ++s;
         else{ // this else branch checks if strings are equal
@@ -170,6 +170,7 @@ int improved_strend(char *s, char *t)
                 ;
             if(*s == *curr_t)
                 return 1;
+            curr_t = t;
         }
     }
 
