@@ -1,4 +1,4 @@
-files = ex_5_9.c #$(wildcard *.cpp)
+files = ex_5_10.c #$(wildcard *.cpp)
 target := a.out
 
 run: main
