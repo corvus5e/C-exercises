@@ -1,4 +1,4 @@
-files = ex_5_10.c #$(wildcard *.cpp)
+files = ex_5_13.c #$(wildcard *.cpp)
 target := a.out
 
 run: main
@@ -6,7 +6,7 @@ run: main
 
 main: $(files)
 	#clear
-	gcc --std=c17 -O0 -Wall -pg $(files) -lm -o $(target)
+	gcc --std=c17 -O0 -Wall -ggdb $(files) -lm -o $(target)
 clean:
 	echo "Cleaning"
 	rm -f *.out
