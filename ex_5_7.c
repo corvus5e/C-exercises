@@ -9,7 +9,7 @@
 #include <string.h>
 
 #define MAX_LEN 1000   // Max len of any input line
-#define MAX_LINES 5000 // Max number of line to be sorted
+#define MAX_LINES 5000 // Max number of line to be stored
 #define BUFF_SIZE 5000 // Storage for read lines
 
 int read_lines(char *lineptr[], int maxlines, char *buf, size_t buf_size);
