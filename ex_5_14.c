@@ -9,23 +9,28 @@
 #include <stdlib.h>
 
 #define MAXLINES 5000 /* max lines to be sorted */
+#define ASCENDING -1
+#define DESCENDING 1
+typedef int(*cmp_func_ptr)(void*, void*);
 
 char *lineptr[MAXLINES]; /* pointers to text lines */
 int readlines(char *lineptr[], int nlines);
 void writelines(char *lineptr[], int nlines);
-void quick_sort(void *lineptr[], int left, int right, int (*comp)(void *, void *));
+void quick_sort(void *lineptr[], int left, int right, int order, cmp_func_ptr cmp);
 int numcmp(char *, char *);
+int str_cmp(char*, char *);
+void read_options(char *options, int *order, cmp_func_ptr* cmp);
 
 /* sort input lines */
 int main(int argc, char *argv[]){
 	int nlines; /* number of input lines read */
-	int numeric = 0; /* 1 if numeric sort */
+	cmp_func_ptr comparator = (cmp_func_ptr)str_cmp;
+	int order = ASCENDING;
 
-	if (argc > 1 && strcmp(argv[1], "-n") == 0)
-		numeric = 1;
+	if (argc > 1 && argv[1][0] == '-')
+		read_options(argv[1]+1/*skipping '-'*/, &order, &comparator);
 	if ((nlines = readlines(lineptr, MAXLINES)) >= 0) {
-		quick_sort((void**) lineptr, 0, nlines-1,
-		(int (*)(void*,void*))(numeric ? numcmp : strcmp));
+		quick_sort((void**) lineptr, 0, nlines-1, order, comparator);
 		writelines(lineptr, nlines);
 		return 0;
 	} else {
@@ -35,7 +40,7 @@ int main(int argc, char *argv[]){
 }
 
 /* quick_sort: sort v[left]...v[right] into increasing order */
-void quick_sort(void *v[], int left, int right, int (*comp)(void *, void *)){
+void quick_sort(void *v[], int left, int right, int order, cmp_func_ptr comp){
 	int i, last;
 	void swap(void *v[], int, int);
 	if (left >= right) /* do nothing if array contains */
@@ -43,11 +48,11 @@ void quick_sort(void *v[], int left, int right, int (*comp)(void *, void *)){
 	swap(v, left, (left + right)/2);
 	last = left;
 	for (i = left+1; i <= right; i++)
-		if ((*comp)(v[i], v[left]) < 0)
+		if ((*comp)(v[i], v[left]) == order)
 			swap(v, ++last, i);
 	swap(v, left, last);
-	quick_sort(v, left, last-1, comp);
-	quick_sort(v, last+1, right, comp);
+	quick_sort(v, left, last-1, order, comp);
+	quick_sort(v, last+1, right, order, comp);
 }
 
 /* numcmp: compare s1 and s2 numerically */
@@ -62,6 +67,16 @@ int numcmp(char *s1, char *s2)
 		return 1;
 	else
 		return 0;
+}
+/*wrapper for standard strcmp. To return only -1 or 0 or +1*/
+int str_cmp(char* l, char *r)
+{
+	int result = strcmp(l, r);
+	if(result < 0)
+		return -1;
+	else if (result > 0)
+		return 1;
+	return 0;
 }
 
 void swap(void *v[], int i, int j)
@@ -92,4 +107,21 @@ void writelines(char *lineptr[], int nlines)
 {
 	while(nlines-- > 0 )
 		printf("%s\n", *lineptr++);
+}
+
+void read_options(char *options, int *order, cmp_func_ptr* cmp)
+{
+	size_t len = strlen(options);
+	*cmp = (cmp_func_ptr)str_cmp;
+	*order = ASCENDING;
+
+	while(len--){
+		printf("LEN=%lu\n", len);
+		switch (*options++) {
+			case 'n': *cmp = (cmp_func_ptr)numcmp;
+				break;
+			case 'r': *order = DESCENDING;
+				break;
+		}
+	}
 }
