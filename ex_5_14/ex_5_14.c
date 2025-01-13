@@ -18,13 +18,12 @@ int readlines(char *lineptr[], int nlines);
 void writelines(char *lineptr[], int nlines);
 void quick_sort(void *lineptr[], int left, int right, int order, cmp_func_ptr cmp);
 int numcmp(char *, char *);
-int str_cmp(char*, char *);
 void read_options(char *options, int *order, cmp_func_ptr* cmp);
 
 /* sort input lines */
 int main(int argc, char *argv[]){
 	int nlines; /* number of input lines read */
-	cmp_func_ptr comparator = (cmp_func_ptr)str_cmp;
+	cmp_func_ptr comparator = (cmp_func_ptr)strcmp;
 	int order = ASCENDING;
 
 	if (argc > 1 && argv[1][0] == '-')
@@ -48,7 +47,7 @@ void quick_sort(void *v[], int left, int right, int order, cmp_func_ptr comp){
 	swap(v, left, (left + right)/2);
 	last = left;
 	for (i = left+1; i <= right; i++)
-		if ((*comp)(v[i], v[left]) == order)
+		if ((*comp)(v[i], v[left]) * order > 0 /*order doesn't match*/)
 			swap(v, ++last, i);
 	swap(v, left, last);
 	quick_sort(v, left, last-1, order, comp);
@@ -58,26 +57,9 @@ void quick_sort(void *v[], int left, int right, int order, cmp_func_ptr comp){
 /* numcmp: compare s1 and s2 numerically */
 int numcmp(char *s1, char *s2)
 {
-	double v1, v2;
-	v1 = atof(s1);
-	v2 = atof(s2);
-	if (v1 < v2)
-		return -1;
-	else if (v1 > v2)
-		return 1;
-	else
-		return 0;
+	return atof(s1) - atof(s2);
 }
-/*wrapper for standard strcmp. To return only -1 or 0 or +1*/
-int str_cmp(char* l, char *r)
-{
-	int result = strcmp(l, r);
-	if(result < 0)
-		return -1;
-	else if (result > 0)
-		return 1;
-	return 0;
-}
+
 
 void swap(void *v[], int i, int j)
 {
@@ -112,8 +94,6 @@ void writelines(char *lineptr[], int nlines)
 void read_options(char *options, int *order, cmp_func_ptr* cmp)
 {
 	size_t len = strlen(options);
-	*cmp = (cmp_func_ptr)str_cmp;
-	*order = ASCENDING;
 
 	while(len--){
 		printf("LEN=%lu\n", len);
