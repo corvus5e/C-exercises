@@ -12,6 +12,12 @@
 #define MAXLINES 5000 /* max lines to be sorted */
 #define ASCENDING -1
 #define DESCENDING 1
+
+
+#define DIR_ORDER_FLAG 1
+#define FOLD_FLAG 2
+#define NUMBER_FLAG 4
+
 typedef int(*cmp_func_ptr)(void*, void*);
 typedef int(*char_diff_func_ptr)(int, int);
 
@@ -19,7 +25,7 @@ char *lineptr[MAXLINES]; /* pointers to text lines */
 
 int readlines(char *lineptr[], int nlines);
 void writelines(char *lineptr[], int nlines);
-void read_options(char *options, int *order, cmp_func_ptr* cmp);
+int read_options(char *options, int *order, cmp_func_ptr* cmp);
 
 void quick_sort(void *lineptr[], int left, int right, int order, cmp_func_ptr cmp);
 /*Returns true if ch is either letter, number or blank, false otherwise*/
@@ -46,7 +52,9 @@ int main(int argc, char *argv[])
 	int order = ASCENDING;
 
 	if (argc > 1 && argv[1][0] == '-')
-		read_options(argv[1]+1/*skipping '-'*/, &order, &comparator);
+		if(!read_options(argv[1]+1/*skipping '-'*/, &order, &comparator))
+			return 1; // bad params, exit
+
 	if ((nlines = readlines(lineptr, MAXLINES)) >= 0) {
 		quick_sort((void**) lineptr, 0, nlines-1, order, comparator);
 		writelines(lineptr, nlines);
@@ -152,20 +160,37 @@ void writelines(char *lineptr[], int nlines)
 		printf("%s\n", *lineptr++);
 }
 
-void read_options(char *options, int *order, cmp_func_ptr* cmp)
+int read_options(char *options, int *order, cmp_func_ptr* cmp)
 {
 	size_t len = strlen(options);
 
+	char flags = 0;
+
 	while(len--){
 		switch (*options++) {
-			case 'n': *cmp = (cmp_func_ptr)numcmp;
-				break;
-			case 'f': *cmp = (cmp_func_ptr)str_cmp_case_insensitive;
-				break;
-			case 'd': *cmp = (cmp_func_ptr)str_cmp_dir;
-				break;
-			case 'r': *order = DESCENDING;
-				break;
+			case 'n': flags |= NUMBER_FLAG; break;
+			case 'f': flags |= FOLD_FLAG; break;
+			case 'd': flags |= DIR_ORDER_FLAG; break;
+			case 'r': *order = DESCENDING; break;
 		}
 	}
+
+	if(flags > 4){ // NUMBER_FLAG is 4, so if >4 than some other flags were set
+		printf("Wrong combination of parameters. Can't use 'n' with 'd' and 'f'.\n");
+		return 0;
+	}
+
+	if(flags & NUMBER_FLAG)
+		*cmp = (cmp_func_ptr)numcmp;
+
+	if(flags & FOLD_FLAG)
+		*cmp = (cmp_func_ptr)str_cmp_case_insensitive;
+
+	if(flags & DIR_ORDER_FLAG)
+		*cmp = (cmp_func_ptr)str_cmp_dir;
+
+	if(flags & FOLD_FLAG && flags & DIR_ORDER_FLAG)
+		*cmp = (cmp_func_ptr)str_cmp_dir_case_insensitive;
+
+	return 1; // return true
 }
