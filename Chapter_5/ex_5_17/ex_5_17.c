@@ -4,7 +4,6 @@
  * was sorted with -df for the index category and -n for the page numbers.)
 */
 /*TODO:
- - parse input parameters in format [start:end] [-nfrd]
  - Free getline memory
 */
 
@@ -31,17 +30,19 @@ char *lineptr[MAXLINES]; /* pointers to text lines */
 /* As structures are not discussed upon this chapter, let use arrays of start,count and comparator for each field */
 size_t fields_start[MAXFIELDS];
 size_t fields_count[MAXFIELDS];
+char fields_order[MAXFIELDS];
 cmp_func_ptr fields_comparators[MAXFIELDS];
+size_t fields_number = 0;
 
 int readlines(char *lineptr[], int nlines);
 void writelines(char *lineptr[], int nlines);
-void read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], cmp_func_ptr fields_cmps[]);
-//TODO: read_range()
+int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], char fields_order[], cmp_func_ptr fields_cmps[]);
+void read_field_range(char *str, size_t *start, size_t *count);
 // returns options as a bit set in a char. Reads until the end of string or unknown option
 char read_options(char *options);
-int get_comparator_and_order(char options, int *order, cmp_func_ptr* cmp);
+int get_comparator_and_order(char options, char *order, cmp_func_ptr* cmp);
 
-void quick_sort(void *lineptr[], int left, int right, int order, cmp_func_ptr cmp);
+void quick_sort(void *lineptr[], int left, int right, cmp_func_ptr cmp);
 /*Returns true if ch is either letter, number or blank, false otherwise*/
 int isdir(int ch);
 
@@ -56,26 +57,27 @@ int str_cmp_dir_general(char*, char*, char_diff_func_ptr);
 int simple_char_diff(int l, int r) {return l - r;}
 int case_insensitive_char_diff(int l, int r) { return tolower(l) - tolower(r);};
 
+// Comparator that applies comparators for each field
+int comparator(char*, char*);
+
 
 /* sort input lines */
 int main(int argc, char *argv[])
 {
-	int nlines; /* number of input lines read */
+	fields_number = read_cmd(argc, argv, fields_start, fields_count, fields_order, fields_comparators);
 
-	cmp_func_ptr comparator = (cmp_func_ptr)strcmp;
-	int order = ASCENDING;
-
-	if (argc > 1 && argv[1][0] == '-'){
-		char options = read_options(argv[1]+1/*skipping '-'*/);
-		if(options == 0)
-			return 1; // bad params, exit
-		
-		if(!get_comparator_and_order(options, &order, &comparator))
-			return 1;
+	if(fields_number <= 0){
+		printf("Bad parameters\n");
+		return 1;
 	}
 
+	for(int i = 0; i < fields_number; ++i)
+		printf("%d. start: %lu; count: %lu; order:%d; cmp:%p\n", i, fields_start[i], fields_count[i], fields_order[i], fields_comparators[i]);
+
+	int nlines; /* number of input lines read */
+
 	if ((nlines = readlines(lineptr, MAXLINES)) >= 0) {
-		quick_sort((void**) lineptr, 0, nlines-1, order, comparator);
+		quick_sort((void**) lineptr, 0, nlines-1, (cmp_func_ptr)comparator);
 		writelines(lineptr, nlines);
 		return 0;
 	} else {
@@ -85,7 +87,7 @@ int main(int argc, char *argv[])
 }
 
 /* quick_sort: sort v[left]...v[right] into increasing order */
-void quick_sort(void *v[], int left, int right, int order, cmp_func_ptr comp){
+void quick_sort(void *v[], int left, int right, cmp_func_ptr comp){
 	int i, last;
 	void swap(void *v[], int, int);
 	if (left >= right) /* do nothing if array contains */
@@ -93,16 +95,48 @@ void quick_sort(void *v[], int left, int right, int order, cmp_func_ptr comp){
 	swap(v, left, (left + right)/2);
 	last = left;
 	for (i = left+1; i <= right; i++)
-		if ((*comp)(v[i], v[left]) * order > 0/*Order doesn't match*/)
+		if ((*comp)(v[i], v[left]) > 0) /*Order doesn't match*/
 			swap(v, ++last, i);
 	swap(v, left, last);
-	quick_sort(v, left, last-1, order, comp);
-	quick_sort(v, last+1, right, order, comp);
+	quick_sort(v, left, last-1, comp);
+	quick_sort(v, last+1, right, comp);
 }
 
 int isdir(int ch)
 {
 	return isdigit(ch) || isalpha(ch) || isspace(ch);
+}
+
+int comparator(char* left, char* right)
+{
+	// Make it simple for now, no dynamic allocation for an actual size, hope 100 is enough
+	static char left_field[100];
+	static char right_field[100];
+
+	int res = 0;
+
+	for(int i = 0; res == 0 && i < fields_number; ++i)
+	{
+		char order = fields_order[i];
+		size_t start = fields_start[i];
+		size_t count = fields_count[i];
+		cmp_func_ptr cmp = fields_comparators[i];
+
+		if(count > 0){ //Copy fields to buffers
+			strncpy(left_field, left + start, count);
+			strncpy(right_field, right + start, count);
+
+			left_field[count] = '\0';
+			right_field[count] = '\0';
+
+			res = cmp(left_field, right_field)*order;
+		}
+		else{ // Compare from the start to the end of str if count is 0
+			res = cmp(left + start, right + start)*order;
+		}
+	}
+
+	return res;
 }
 
 /* numcmp: compare s1 and s2 numerically */
@@ -179,49 +213,91 @@ void writelines(char *lineptr[], int nlines)
 		printf("%s\n", *lineptr++);
 }
 
-void read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], cmp_func_ptr fields_cmps[])
+int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], char fields_order[],  cmp_func_ptr fields_cmps[])
 {
-	//TODO: implement this!
-	// if(read_range()){
-	//		if(read_options(){
-	//			i++
-	//		}
-	//		else{ set default options for this range }
-	// }
-	// else {
-	//		set field range as full, 
-	// 		if ( i == 0) // first read
-	//			read_opts()
-	//		else exit, that's all
-	//}
+	//WARNING: With parameters like: "./sort 0: < input.txt" this functions will fall into an endless loop.
+	// Fix later!
+
+	size_t start = 0, count = 0;
+	size_t n = 0;
+
+	// Add default params for the first range
+	fields_starts[0] = 0;
+	fields_counts[0] = 0; // 0 is a code for the whole string
+	get_comparator_and_order(0/* default options*/, &fields_order[0], &fields_cmps[0]);
+
+	for(int i = 1; i < argc; i+=2, ++n)
+	{
+		read_field_range(argv[i], &start, &count);
+
+		char options = 0;
+
+		fields_starts[n] = start;
+		fields_counts[n] = count;
+		get_comparator_and_order(options, &fields_order[n], &fields_cmps[n]); // put default options 
+		
+		//TODO: check range. If intersects - exit with error;
+
+		if(i == 1 && start == 0 && count == 0) // there was no range, so try to read options
+			--i; 
+
+		if(i+1 < argc)
+			options  = read_options(argv[i+1]);
+
+		if(options >= 0){
+			if(get_comparator_and_order(options, &fields_order[n], &fields_cmps[n]))
+				get_comparator_and_order(options, &fields_order[n], &fields_cmps[n]); // update options if correct one were passed
+			else
+				return 0; // wrong options passed
+		}
+		else // Maybe it was range, try again
+			i--;
+	}
+
+	return n == 0 ? 1 : n;
+}
+
+void read_field_range(char *str, size_t *start, size_t *count)
+{
+	char *pos = strchr(str, ':');
+	*start = atoi(str);
+	if(pos)
+		*count = atoi(++pos);
+	else
+		*count = 0;
 }
 
 char read_options(char *options_str)
 {
+	if(*options_str != '-')
+		return -1;
+
 	char flags = 0;
 	char c = 0;
 
-	while((c = *options_str++)){
+	while((c = *(++options_str))){
 		switch (c) {
 			case 'n': flags |= NUMBER_FLAG; break;
 			case 'f': flags |= FOLD_FLAG; break;
 			case 'd': flags |= DIR_ORDER_FLAG; break;
 			case 'r': flags |= REVERSED_FLAG; break;
 			default: printf("Unknown option: '%c'\n", c);
-					 return flags;
+					 return -1;
 		}
 	}
 
 	return flags;
-
 }
 
-int get_comparator_and_order(char options, int *order, cmp_func_ptr* cmp)
+int get_comparator_and_order(char options, char *order, cmp_func_ptr* cmp)
 {
-	if(options > 9){ // 0 | NUMBER_FLAG | REVERSED_FLAG
+	if(options > 9){ //9 == (0 | NUMBER_FLAG | REVERSED_FLAG)
 		printf("Wrong combination of parameters. Can't set 'n' with 'f' or 'd'\n");
 		return 0;
 	}
+
+	*order = ASCENDING;
+	*cmp = (cmp_func_ptr)strcmp;
 
 	if(options & REVERSED_FLAG)
 		*order = DESCENDING;
