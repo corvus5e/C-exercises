@@ -24,17 +24,22 @@ typedef int(*cmp_func_ptr)(void*, void*);
 typedef int(*char_diff_func_ptr)(int, int);
 
 char *lineptr[MAXLINES]; /* pointers to text lines */
+
+typedef struct Field {
+	size_t start;
+	size_t count;
+	char order;
+	cmp_func_ptr comparator;
+} Field;
+
 /* As structures are not discussed upon this chapter, let use arrays of start,count and comparator for each field */
-size_t fields_start[MAXFIELDS];
-size_t fields_count[MAXFIELDS];
-char fields_order[MAXFIELDS];
-cmp_func_ptr fields_comparators[MAXFIELDS];
+Field fields[MAXFIELDS];
 size_t fields_number = 0;
 
 int readlines(char *lineptr[], int nlines);
 void freelines(char *lineptr[], int nlines);
 void writelines(char *lineptr[], int nlines);
-int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], char fields_order[], cmp_func_ptr fields_cmps[]);
+int read_cmd(int argc, char *argv[], Field fields[]);
 void read_field_range(char *str, size_t *start, size_t *count);
 // returns options as a bit set in a char. Reads until the end of string or unknown option
 char read_options(char *options);
@@ -73,17 +78,13 @@ This compares strings by two fields: first from position 5 and length 10 using f
 and the second field - from position 20 and length 10 using 'n' flag to compare number-wise");
 		return 0;
 	}
-	
 
-	fields_number = read_cmd(argc, argv, fields_start, fields_count, fields_order, fields_comparators);
+	fields_number = read_cmd(argc, argv, fields);
 
 	if(fields_number <= 0){
 		printf("Bad parameters\n");
 		return 1;
 	}
-
-	//for(int i = 0; i < fields_number; ++i)
-	//	printf("%d. start: %lu; count: %lu; order:%d; cmp:%p\n", i, fields_start[i], fields_count[i], fields_order[i], fields_comparators[i]);
 
 	int nlines; /* number of input lines read */
 
@@ -129,23 +130,18 @@ int comparator(char* left, char* right)
 
 	for(int i = 0; res == 0 && i < fields_number; ++i)
 	{
-		char order = fields_order[i];
-		size_t start = fields_start[i];
-		size_t count = fields_count[i];
-		cmp_func_ptr cmp = fields_comparators[i];
+		if(fields[i].count > 0) //Copy fields to buffers
+		{
+			strncpy(left_field, left + fields[i].start, fields[i].count);
+			strncpy(right_field, right + fields[i].start, fields[i].count);
 
-		if(count > 0){ //Copy fields to buffers
-			strncpy(left_field, left + start, count);
-			strncpy(right_field, right + start, count);
+			left_field[fields[i].count] = '\0';
+			right_field[fields[i].count] = '\0';
 
-			left_field[count] = '\0';
-			right_field[count] = '\0';
-
-			res = cmp(left_field, right_field)*order;
+			res = fields[i].comparator(left_field, right_field) * fields[i].order;
 		}
-		else{ // Compare from the start to the end of str if count is 0
-			res = cmp(left + start, right + start)*order;
-		}
+		else // Compare from the start to the end of str if count is 0
+			res = fields[i].comparator(left + fields[i].start, right + fields[i].start) * fields[i].order;
 	}
 
 	return res;
@@ -231,7 +227,7 @@ void writelines(char *lineptr[], int nlines)
 		printf("%s\n", *lineptr++);
 }
 
-int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], char fields_order[],  cmp_func_ptr fields_cmps[])
+int read_cmd(int argc, char *argv[], Field fields[])
 {
 	//WARNING: With parameters like: "./sort 0: < input.txt" this functions will fall into an endless loop.
 	// Fix later!
@@ -240,9 +236,9 @@ int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_count
 	size_t n = 0;
 
 	// Add default params for the first range
-	fields_starts[0] = 0;
-	fields_counts[0] = 0; // 0 is a code for the whole string
-	get_comparator_and_order(0/* default options*/, &fields_order[0], &fields_cmps[0]);
+	fields[0].start = 0;
+	fields[0].count = 0; // 0 is a code for the whole string
+	get_comparator_and_order(0/* default options*/, &fields[0].order, &fields[0].comparator);
 
 	for(int i = 1; i < argc; i+=2, ++n)
 	{
@@ -250,9 +246,9 @@ int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_count
 
 		char options = 0;
 
-		fields_starts[n] = start;
-		fields_counts[n] = count;
-		get_comparator_and_order(options, &fields_order[n], &fields_cmps[n]); // put default options 
+		fields[n].start = start;
+		fields[n].count = count;
+		get_comparator_and_order(options, &fields[n].order, &fields[n].comparator); // put default options 
 		
 		//TODO: check range. If intersects - exit with error;
 
@@ -263,8 +259,8 @@ int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_count
 			options  = read_options(argv[i+1]);
 
 		if(options >= 0){
-			if(get_comparator_and_order(options, &fields_order[n], &fields_cmps[n]))
-				get_comparator_and_order(options, &fields_order[n], &fields_cmps[n]); // update options if correct one were passed
+			if(get_comparator_and_order(options, &fields[n].order, &fields[n].comparator))
+				get_comparator_and_order(options, &fields[n].order, &fields[n].comparator); // update options if correct one were passed
 			else
 				return 0; // wrong options passed
 		}
