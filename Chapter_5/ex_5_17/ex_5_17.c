@@ -3,9 +3,6 @@
  * lines, each field sorted according to an independent set of options. (The index for this book
  * was sorted with -df for the index category and -n for the page numbers.)
 */
-/*TODO:
- - Free getline memory
-*/
 
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -35,6 +32,7 @@ cmp_func_ptr fields_comparators[MAXFIELDS];
 size_t fields_number = 0;
 
 int readlines(char *lineptr[], int nlines);
+void freelines(char *lineptr[], int nlines);
 void writelines(char *lineptr[], int nlines);
 int read_cmd(int argc, char *argv[], size_t fields_starts[], size_t fields_counts[], char fields_order[], cmp_func_ptr fields_cmps[]);
 void read_field_range(char *str, size_t *start, size_t *count);
@@ -64,6 +62,19 @@ int comparator(char*, char*);
 /* sort input lines */
 int main(int argc, char *argv[])
 {
+	if(argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-h") == 0)){
+		printf("Usage: sort [start:count] [-nfdr]\n");
+		printf("[start:count] is a range for field comparison. If no range, the whole string compared.\n\
+If no options, simple strcmp is used.\n\
+More than one range could be provided. If no count provided, the comparison starts from start till the \
+end of string.\n\n\
+Example: sort 5:10 -df 20:10 -n < input.txt\n\
+This compares strings by two fields: first from position 5 and length 10 using flags 'df',\n\
+and the second field - from position 20 and length 10 using 'n' flag to compare number-wise");
+		return 0;
+	}
+	
+
 	fields_number = read_cmd(argc, argv, fields_start, fields_count, fields_order, fields_comparators);
 
 	if(fields_number <= 0){
@@ -71,14 +82,15 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	for(int i = 0; i < fields_number; ++i)
-		printf("%d. start: %lu; count: %lu; order:%d; cmp:%p\n", i, fields_start[i], fields_count[i], fields_order[i], fields_comparators[i]);
+	//for(int i = 0; i < fields_number; ++i)
+	//	printf("%d. start: %lu; count: %lu; order:%d; cmp:%p\n", i, fields_start[i], fields_count[i], fields_order[i], fields_comparators[i]);
 
 	int nlines; /* number of input lines read */
 
 	if ((nlines = readlines(lineptr, MAXLINES)) >= 0) {
 		quick_sort((void**) lineptr, 0, nlines-1, (cmp_func_ptr)comparator);
 		writelines(lineptr, nlines);
+		freelines(lineptr, nlines);
 		return 0;
 	} else {
 		printf("input too big to sort\n");
@@ -206,6 +218,12 @@ int readlines(char *lineptr[], int nlines)
 	return read_lines_num;
 }
 
+void freelines(char *lineptr[], int n)
+{
+	for(int i = 0; i < n; ++i){
+		free(lineptr[i]);
+	}
+}
 
 void writelines(char *lineptr[], int nlines)
 {

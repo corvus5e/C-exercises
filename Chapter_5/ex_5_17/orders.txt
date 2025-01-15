@@ -1,6 +1,7 @@
 Apple Store         : chess.com        :16   ;
 Apple Store         : Guncho           :3    ;
 Youtube             : Monthly          :5    ;
+MacDonalds          : Still water      :549  ;
 Play Awizo          : monthly          :25   ;
 adobe Inc           : Photoshop        :1000 ;
 Air Bnb             : Rent             :549  ;
