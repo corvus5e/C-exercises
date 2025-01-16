@@ -4,6 +4,8 @@
  * was sorted with -df for the index category and -n for the page numbers.)
 */
 
+/*TODO: Make -d option also work with -n, so 5_11 could be parsed as a number 511*/
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
