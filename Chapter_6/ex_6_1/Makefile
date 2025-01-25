@@ -1,4 +1,4 @@
-files = *.c
+files = ex_6_1.c
 target = ex_6_1
 
 main: $(files)
