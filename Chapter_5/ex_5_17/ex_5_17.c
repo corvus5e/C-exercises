@@ -60,7 +60,7 @@ int str_cmp_case_insensitive(char*, char*);
 
 int str_cmp_dir_general(char*, char*, char_diff_func_ptr);
 int simple_char_diff(int l, int r) {return l - r;}
-int case_insensitive_char_diff(int l, int r) { return tolower(l) - tolower(r);};
+int case_insensitive_char_diff(int l, int r) { return tolower(l) - tolower(r);}
 
 // Comparator that applies comparators for each field
 int comparator(char*, char*);
