@@ -8,6 +8,7 @@
    - preprocessor control lines
 */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -36,6 +37,9 @@ char flags_s = EMPTY_FLAGS;
 
 int getword(char *, int);
 int binsearch(char *, struct key *, int);
+
+int getch(void);
+void ungetch(int);
 
 /* count C keywords */
 int main()
@@ -78,11 +82,19 @@ int binsearch(char *word, struct key tab[], int n)
 	return -1;
 }
 
+/*Skips stdin untill pattern or EOF is met.
+  Returns 1 is patters is met. 0 if EOF.
+  Next stdin read would be just after the pattern.
+  This function is implemented for short patters line "//", "#", etc
+  So to avoid dynamic memory allocation it holds a small fixed size array as a buffer,
+  lets say no bigger than 10 chars;
+  */
+int skip_stdin_till(const char* pattern);
+
 /* getword: get next word or character from input */
 int getword(char *word, int lim)
 {
-	int getch(void);
-	void ungetch(int);
+
 
 	char *w = word;
 	*w = '\0'; // consider the buffer as empty at start
@@ -132,6 +144,40 @@ int getword(char *word, int lim)
 	*w = '\0';
 
 	return word[0];
+}
+
+int skip_stdin_till(const char* pattern)
+{
+	//TODO: Make buf a parameter ?
+	size_t pattern_len = strlen(pattern);
+	char *buf = malloc(pattern_len);
+	int i = 0;
+
+	if(!buf)
+		return EOF;
+
+	buf[pattern_len] = '\0';
+
+	// Fill buf with first n chars
+	for(int j = 0; j < pattern_len; ++j){
+		if((buf[j] = getch()) == EOF){
+			free(buf);
+			return EOF;
+		}
+	}
+
+	while(strcmp(buf, pattern) != 0)
+	{
+		//TODO: shift buf left by one
+		if((buf[pattern_len - 1] = getch()) == EOF){
+			free(buf);
+			return EOF;
+		}
+	}
+
+	free(buf);
+
+	return 1;
 }
 
 #define BUFERSIZE 100
