@@ -3,11 +3,6 @@
  * comments, or preprocessor control lines. Write a better version.
 */
 
-/* TODO:
-   - string constants
-   - preprocessor control lines
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
