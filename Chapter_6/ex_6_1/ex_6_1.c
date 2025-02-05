@@ -41,8 +41,14 @@ int binsearch(char *, struct key *, int);
 int getch(void);
 void ungetch(int);
 
+/*Skips stdin untill pattern or EOF is met.
+  Returns 1 is patters is met. 0 if EOF.
+  Next stdin read would be just after the pattern.
+  */
+int skip_stdin_till(const char* pattern);
+
 /* count C keywords */
-int main()
+int main(int argc, char* argv[])
 {
 	int n;
 	char word[MAXWORD];
@@ -82,20 +88,11 @@ int binsearch(char *word, struct key tab[], int n)
 	return -1;
 }
 
-/*Skips stdin untill pattern or EOF is met.
-  Returns 1 is patters is met. 0 if EOF.
-  Next stdin read would be just after the pattern.
-  This function is implemented for short patters line "//", "#", etc
-  So to avoid dynamic memory allocation it holds a small fixed size array as a buffer,
-  lets say no bigger than 10 chars;
-  */
-int skip_stdin_till(const char* pattern);
+
 
 /* getword: get next word or character from input */
 int getword(char *word, int lim)
 {
-
-
 	char *w = word;
 	*w = '\0'; // consider the buffer as empty at start
 	int c = 0;
@@ -109,22 +106,23 @@ int getword(char *word, int lim)
 			return EOF;
 
 		if(c == '/'){ // possible comment section
-			// TODO: make separate function, for example skip_till(char* end_pattern);
 			if((c = getch()) == '/'){ // this is line comment
-				while((c = getch()) != EOF && c != '\n')
-					;
-				continue; // comment line is finished, no worlds, start from the beginnig
+                skip_stdin_till("\n");
+				continue;
 			}
 			else if(c == '*'){ // this is a block comment
-				char b = 0;
-				c = getch();
-				while(b != EOF && c != EOF && !(b == '*' && c == '/')){
-					b = c;
-					c = getch();
-				}
-				continue; // comment block is finished, no worlds, start from the beginnig
+                skip_stdin_till("*/");
+				continue;
 			}
 		}
+        else if(c == '#'){ // this is a preprocessor 
+            skip_stdin_till("\n");
+            continue;
+        }
+        else if (c == '"') { // this is a string literal begin
+            skip_stdin_till("\"");
+            continue;
+        }
 
 		if (c != EOF)
 			*w++ = c;
@@ -149,38 +147,41 @@ int getword(char *word, int lim)
 int skip_stdin_till(const char* pattern)
 {
 	//TODO: Make buf a parameter ?
-	size_t pattern_len = strlen(pattern);
-	char *buf = malloc(pattern_len);
-	int i = 0;
+	size_t n = strlen(pattern);
+	char *buf = malloc(n + 1);
 
 	if(!buf)
-		return EOF;
+		return 0;
 
-	buf[pattern_len] = '\0';
+    //read first n chars
+    int i = 0;
+    for(; i < n && (buf[i] = getch()) != EOF; ++i)
+        ;
 
-	// Fill buf with first n chars
-	for(int j = 0; j < pattern_len; ++j){
-		if((buf[j] = getch()) == EOF){
-			free(buf);
-			return EOF;
-		}
-	}
+    if(buf[i] == EOF){ // we exited from previous loop because of EOF
+        free(buf);
+        return 0;
+    }
 
-	while(strcmp(buf, pattern) != 0)
-	{
-		//TODO: shift buf left by one
-		if((buf[pattern_len - 1] = getch()) == EOF){
-			free(buf);
-			return EOF;
-		}
-	}
+	buf[n] = '\0';
 
-	free(buf);
+    char *b = NULL;
+    while(strcmp(buf, pattern) != 0){
+        for(b = buf; *b && *(b+1); ++b) //shift buf left by one
+            *b = *(b + 1);
+
+        if((*b = getch()) == EOF){
+            free(buf);
+            return 0;
+        }
+
+        //printf("buf:%s\n", buf);
+    }
 
 	return 1;
 }
 
-#define BUFERSIZE 100
+#define BUFERSIZE 10
 
 char buf[BUFERSIZE];/*buffer for ungetch*/
 int bufp = 0; /*next free position in buf*/
@@ -190,7 +191,7 @@ int getch(void)
 	return (bufp > 0) ? buf[--bufp] : getchar();
 }
 
-void ungetch(int c) /*push charackter back to input*/
+void ungetch(int c) /*push character back to input*/
 {
 	if(bufp >= BUFERSIZE)
 		printf("Error: ungetch - too many charackters\n");
