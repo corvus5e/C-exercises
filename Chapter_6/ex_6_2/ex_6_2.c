@@ -4,6 +4,12 @@
   * thereafter. Don't count words within strings and comments. Make 6 a parameter that can be
   * set from the command line.
 */
+
+/*NOTE:
+  * Variables names of struct types are not parsed by this program.
+  * Struct members are recognized as variables names.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -25,6 +31,7 @@ struct tnode {
 struct tnode *addtree(struct tnode *p, char *word);
 void treeprint(struct tnode *root);
 int getword(char *, int);
+int get_decl_name(char *, int);
 char *binsearch(char *, char *[], int);
 
 int getch(void);
@@ -42,13 +49,14 @@ int main(int argc, char* argv[])
 	char *types[] = {"char", "double", "float", "int", "long", "short", "unsigned", "void"};
 	size_t types_count = (sizeof types/ sizeof(types[0]));
 
-	char *p;
 	char word[MAXWORD];
+	char declaration[MAXWORD];
 
 	while (getword(word, MAXWORD) != EOF)
-		if (isalpha(word[0]))
-			if ((p = binsearch(word, types, types_count)) != NULL)
-				printf("Found:%s\n", p);
+		if (isalpha(word[0]) && binsearch(word, types, types_count) != NULL)
+			if(get_decl_name(declaration, MAXWORD) != EOF)
+				if(getword(word, MAXWORD) != EOF && word[0] != '(')
+					printf("variable:%s\n", declaration);
 
 	//treeprint();
 	return 0;
@@ -118,7 +126,7 @@ int getword(char *word, int lim)
 		if (c != EOF)
 			*w++ = c;
 
-		if (!isalpha(c)) {
+		if (!isalpha(c) && c != '_') {
 			*w = '\0';
 			return c;
 		}
@@ -131,9 +139,20 @@ int getword(char *word, int lim)
 	}
 
 	*w = '\0';
-	printf("word:%s\n", word);
+
 	return word[0];
 }
+
+int get_decl_name(char *word, int lim)
+{
+	int c = 0;
+
+	if((c = getword(word, lim)) != EOF)
+		if(c == '*') // this is a pointer
+			return getword(word, lim);
+	return c;
+}
+
 
 int skip_stdin_till(const char* pattern)
 {
