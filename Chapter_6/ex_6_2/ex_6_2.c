@@ -28,11 +28,18 @@ struct tnode {
 
 #define MAXWORD 100
 
-struct tnode *addtree(struct tnode *p, char *word);
-void treeprint(struct tnode *root);
+struct tnode *addtree(struct tnode *p, char *word, struct tnode *group_root, int prefix_n);
+struct tnode *talloc();
+typedef void (*tnodeFunc)(struct tnode*);
+void tree_iterate(struct tnode *root, tnodeFunc k);
+void free_tree(struct tnode *p, tnodeFunc func);
+void print_tnode(struct tnode *p);
+void tfree(struct tnode *p);
+
 int getword(char *, int);
 int get_decl_name(char *, int);
 char *binsearch(char *, char *[], int);
+int strcmp_prefix(const  char*, const char*, int*);
 
 int getch(void);
 void ungetch(int);
@@ -49,16 +56,24 @@ int main(int argc, char* argv[])
 	char *types[] = {"char", "double", "float", "int", "long", "short", "unsigned", "void"};
 	size_t types_count = (sizeof types/ sizeof(types[0]));
 
+	int group_prefix_count;
+	if(argc <= 1 || (group_prefix_count = atoi(argv[1])) <= 0)
+		group_prefix_count = 3;
+
 	char word[MAXWORD];
 	char declaration[MAXWORD];
+	struct tnode *root = NULL;
 
 	while (getword(word, MAXWORD) != EOF)
 		if (isalpha(word[0]) && binsearch(word, types, types_count) != NULL)
-			if(get_decl_name(declaration, MAXWORD) != EOF)
-				if(getword(word, MAXWORD) != EOF && word[0] != '(')
-					printf("variable:%s\n", declaration);
+			if(get_decl_name(declaration, MAXWORD) != EOF &&
+				(getword(word, MAXWORD) != EOF && word[0] != '('))
+				root = addtree(root, declaration, NULL, group_prefix_count);
 
-	//treeprint();
+	tree_iterate(root, print_tnode);
+	free_tree(root, tfree); // free memory
+	tfree(root);
+
 	return 0;
 }
 
@@ -84,11 +99,109 @@ char *binsearch(char *word, char *tab[], int n)
 	return NULL;
 }
 
-struct tnode *addtree(struct tnode *p, char *word){
+int strcmp_prefix(const  char *l, const char *r, int *same_prefix_count)
+{
+	*same_prefix_count = 0;
+
+	while(*l && (*l == *r)){
+		++l;
+		++r;
+		++(*same_prefix_count);
+	}
+
+	return *l - *r;
 }
 
-void treeprint(struct tnode *root){
+struct tnode *addtree(struct tnode *p, char *word, struct tnode* group_root, int prefix_n)
+{
+	if(p == NULL){
+		if(!(p = talloc())){
+			printf("Error: talloc failed\n");
+			return p;
+		}
+
+		p->data->word = strdup(word);
+		p->data->group_root = group_root ? group_root : p;
+		p->left = p->right = NULL;
+
+		return p;
+	}
+
+	int cond;
+	int common_prefix_count;
+
+	if((cond = strcmp_prefix(word, p->data->word, &common_prefix_count)) == 0)
+		return p;
+
+	if(!group_root && common_prefix_count >= prefix_n)
+		group_root = p;
+
+	if(cond < 0)
+		p->left = addtree(p->left, word, group_root, prefix_n);
+	else
+		p->right = addtree(p->right, word, group_root, prefix_n);
+
+	return p;
 }
+
+struct tnode *talloc()
+{
+	struct tnode *p = (struct tnode*)malloc(sizeof(struct tnode));
+
+	if(p != NULL)
+		p->data = (struct tdata*)malloc(sizeof(struct tdata));
+
+	return p;
+}
+
+void tree_iterate(struct tnode *p, tnodeFunc func)
+{
+	if(p != NULL){
+		tree_iterate(p->left, func);
+		func(p);
+		tree_iterate(p->right, func);
+	}
+}
+
+void free_tree(struct tnode *p, tnodeFunc func)
+{
+	if(p != NULL){
+		free_tree(p->left, func);
+		func(p->left);
+		free_tree(p->right, func);
+		func(p->right);
+	}
+}
+
+void print_tnode(struct tnode *p)
+{
+	static struct tnode *last_printed_group = NULL;
+
+	if(p && p->data && p->data->word){
+		if(last_printed_group == NULL || last_printed_group != p->data->group_root){
+			last_printed_group = p->data->group_root;
+			printf("\n");
+		}
+		printf("%s\n", p->data->word);
+	}
+	else
+		printf("Error in print_tnode: attempt to print NULL");
+}
+
+void tfree(struct tnode *p)
+{
+	if(p == NULL)
+		return;
+
+	if(p->data){
+		if(p->data->word)
+			free(p->data->word);
+		free(p->data);
+	}
+
+	free(p);
+}
+
 
 /* getword: get next word or character from input */
 int getword(char *word, int lim)
