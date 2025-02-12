@@ -28,13 +28,13 @@ struct tnode {
 
 #define MAXWORD 100
 
-struct tnode *addtree(struct tnode *p, char *word, struct tnode *group_root, int prefix_n);
 struct tnode *talloc();
-typedef void (*tnodeFunc)(struct tnode*);
-void tree_iterate(struct tnode *root, tnodeFunc k);
-void free_tree(struct tnode *p, tnodeFunc func);
-void print_tnode(struct tnode *p);
 void tfree(struct tnode *p);
+
+struct tnode *addtree(struct tnode *p, char *word, struct tnode *group_root, int prefix_n);
+void treeprint(struct tnode *root);
+void free_tree(struct tnode *p);
+void print_tnode(struct tnode *p);
 
 int getword(char *, int);
 int get_decl_name(char *, int);
@@ -70,8 +70,9 @@ int main(int argc, char* argv[])
 				(getword(word, MAXWORD) != EOF && word[0] != '('))
 				root = addtree(root, declaration, NULL, group_prefix_count);
 
-	tree_iterate(root, print_tnode);
-	free_tree(root, tfree); // free memory
+	treeprint(root);
+
+	free_tree(root); // free memory
 	tfree(root);
 
 	return 0;
@@ -154,22 +155,23 @@ struct tnode *talloc()
 	return p;
 }
 
-void tree_iterate(struct tnode *p, tnodeFunc func)
+void treeprint(struct tnode *p)
 {
 	if(p != NULL){
-		tree_iterate(p->left, func);
-		func(p);
-		tree_iterate(p->right, func);
+		treeprint(p->left);
+		print_tnode(p);
+		treeprint(p->right);
 	}
 }
 
-void free_tree(struct tnode *p, tnodeFunc func)
+void free_tree(struct tnode *p)
 {
 	if(p != NULL){
-		free_tree(p->left, func);
-		func(p->left);
-		free_tree(p->right, func);
-		func(p->right);
+		free_tree(p->left);
+		tfree(p->left);
+
+		free_tree(p->right);
+		tfree(p->right);
 	}
 }
 
