@@ -14,22 +14,33 @@ struct list_node {
 	struct list_node *next;
 };
 
-struct tree_node {
-	char *word;
-	struct tree_node *left;
-	struct tree_node *right;
+struct list {
 	struct list_node *head;
 	struct list_node *tail;
+};
+
+struct tree_node {
+	char *word;
+	struct list *lines_list;
+
+	struct tree_node *left;
+	struct tree_node *right;
 };
 
 #define MAXWORD 100
 
 struct list_node *list_node_alloc(void);
-void list_node_free(void);
-struct tree_node *tree_node_alloc(void);
-void tree_node_free(struct tree_node *p);
+struct list *list_alloc(void);
+void list_node_free(struct list_node *p);
+void list_free(struct list *p);
+void list_add(struct list *p, int line);
 
-struct tree_node *addtree(struct tree_node *p, char *word, int line);
+struct tree_node *tree_node_alloc(char *word);
+void tree_node_free(struct tree_node *p);
+/* Returns a pointer to a node with a given word, or if missing -
+ * a pointer to a pointer in which node coud be allocated*/
+struct tree_node **search_tree(struct tree_node **p, char *word);
+struct tree_node *addtree(struct tree_node **p, char *word, int line);
 void treeprint(struct tree_node *root);
 void free_tree(struct tree_node *p);
 
@@ -39,7 +50,6 @@ char *binsearch(char *, char *[], int);
 int getch(void);
 void ungetch(int);
 
-/* count C keywords */
 int main(int argc, char* argv[])
 {
 	char *noise_words[] = {"a", "and", "the"};
@@ -51,8 +61,7 @@ int main(int argc, char* argv[])
 	int line = 1;
 	while (getword(word, MAXWORD, &line) != EOF)
 		if(!binsearch(word, noise_words, noise_count))
-			printf("%s - %d\n", word, line);
-		//root = addtree(root, declaration, NULL, group_prefix_count);
+			addtree(&root, word, line);
 
 	treeprint(root);
 
@@ -84,46 +93,117 @@ char *binsearch(char *word, char *tab[], int n)
 	return NULL;
 }
 
-struct tree_node *addtree(struct tree_node *p, char *word, int line)
+struct tree_node **search_tree(struct tree_node **node, char *word)
 {
-	if(p == NULL){
-		if(!(p = tree_node_alloc())){
-			printf("Error: talloc failed\n");
-			return p;
-		}
-
-		p->word = strdup(word);
-		p->left = p->right = NULL;
-
-		return p;
-	}
+	if(*node == NULL)
+		return node;
 
 	int cond;
+	struct tree_node  *p = *node;
 
 	if((cond = strcmp(word, p->word)) == 0)
-		return p;
+		return node;
 
 	if(cond < 0)
-		p->left = addtree(p->left, word, line);
-	else
-		p->right = addtree(p->right, word, line);
+		return search_tree(&(p->left), word);
+
+	return search_tree(&(p->right), word);
+}
+
+struct tree_node *addtree(struct tree_node **root, char *word, int line)
+{
+	struct tree_node **node = search_tree(root, word);
+
+	if(*node == NULL)
+		*node = tree_node_alloc(word);
+
+	list_add((*node)->lines_list, line);
+
+	return *node;
+}
+
+struct tree_node *tree_node_alloc(char *word)
+{
+	struct tree_node *p = (struct tree_node*)malloc(sizeof(struct tree_node));
+
+	if(!p)
+		printf("Error in tree_node_alloc: malloc failed!\n");
+
+	p->word = strdup(word);
+	p->left = p->right = NULL;
+	p->lines_list = list_alloc();
+
+	return p;
+}
+struct list *list_alloc()
+{
+	struct list *p = (struct list*)malloc(sizeof(struct list));
+	if(!p)
+		printf("Error in list_alloc: malloc failed\n");
+
+	p->head = NULL;
+	p->tail = NULL;
 
 	return p;
 }
 
-struct tree_node *tree_node_alloc()
+void list_node_free(struct list_node *p)
 {
-	struct tree_node *p = (struct tree_node*)malloc(sizeof(struct tree_node));
+	free(p);
+}
+
+void list_free(struct list *p)
+{
+	if(!p){
+		printf("Error in list_free: list is NULL\n");
+	}
+
+	struct list_node *next;
+	for(struct list_node *node = p->head; node; node = next){
+		next = node->next;
+		list_node_free(node);
+	}
+}
+
+struct list_node *list_node_alloc(void)
+{
+	struct list_node *p = (struct list_node*)malloc(sizeof(struct list_node));
+
+	if(!p)
+		printf("Error in list_node_alloc: failed to malloc\n");
+
+	p->next = NULL;
 
 	return p;
+}
+
+void list_add(struct list *p, int line)
+{
+	if(!p){
+		printf("Error in list_add: input list is NULL\n");
+		return;
+	}
+
+	if(!p->head)
+		p->head = p->tail = list_node_alloc();
+		
+	else
+		p->tail = p->tail->next = list_node_alloc();
+	
+	p->tail->line_number = line;
 }
 
 void treeprint(struct tree_node *p)
 {
 	if(p != NULL){
 		treeprint(p->left);
-		printf("%s\n", p->word);
-		//TODO: print list here
+
+		printf("%s:", p->word);
+		for(struct list_node* l = p->lines_list->head;l;l = l->next){
+			printf(" %lu", l->line_number);
+		}
+		printf("\n");
+
 		treeprint(p->right);
 	}
 }
@@ -143,7 +223,9 @@ void tree_node_free(struct tree_node *p)
 {
 	if(p == NULL)
 		return;
-	//TODO: free list here
+
+	list_free(p->lines_list);
+
 	free(p);
 }
 
@@ -160,7 +242,7 @@ int getword(char *word, int lim, int *line)
 
 	*w++ = c;
 
-	while(isalnum(*w = getch()) && --lim > 0)
+	while((isalnum(*w = getch()) || *w == '\'') && --lim > 0)
 		++w;
 
 	ungetch(*w);

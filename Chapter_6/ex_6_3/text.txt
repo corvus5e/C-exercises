@@ -1,6 +1,6 @@
-Hello,#word!
+Hello,#world!
 And a Happy New Year?  !!!
 We wish you a Merry Christmas!
 What is London - the capital!
-(And whats here(or here))?
+(And whats here(or here))? world wide London
 
