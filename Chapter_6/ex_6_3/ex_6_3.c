@@ -34,6 +34,7 @@ struct list *list_alloc(void);
 void list_node_free(struct list_node *p);
 void list_free(struct list *p);
 void list_add(struct list *p, int line);
+void print_list(struct list *p);
 
 struct tree_node *tree_node_alloc(char *word);
 void tree_node_free(struct tree_node *p);
@@ -65,7 +66,8 @@ int main(int argc, char* argv[])
 
 	treeprint(root);
 
-	free_tree(root); // free memory
+	// free memory
+	free_tree(root);
 	tree_node_free(root);
 
 	return 0;
@@ -163,6 +165,8 @@ void list_free(struct list *p)
 		next = node->next;
 		list_node_free(node);
 	}
+
+	free(p);
 }
 
 struct list_node *list_node_alloc(void)
@@ -193,15 +197,21 @@ void list_add(struct list *p, int line)
 	p->tail->line_number = line;
 }
 
+void print_list(struct list *p)
+{
+	struct list_node* l = p->head;
+
+	for(; l; l = l->next)
+		printf(" %lu", l->line_number);
+}
+
 void treeprint(struct tree_node *p)
 {
 	if(p != NULL){
 		treeprint(p->left);
 
 		printf("%s:", p->word);
-		for(struct list_node* l = p->lines_list->head;l;l = l->next){
-			printf(" %lu", l->line_number);
-		}
+		print_list(p->lines_list);
 		printf("\n");
 
 		treeprint(p->right);
@@ -225,7 +235,7 @@ void tree_node_free(struct tree_node *p)
 		return;
 
 	list_free(p->lines_list);
-
+	free(p->word);
 	free(p);
 }
 
