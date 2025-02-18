@@ -42,7 +42,7 @@ void tree_node_free(struct tree_node *p);
  * a pointer to a pointer in which node coud be allocated*/
 struct tree_node **search_tree(struct tree_node **p, char *word);
 struct tree_node *addtree(struct tree_node **p, char *word, int line);
-void treeprint(struct tree_node *root);
+void iterate_tree(struct tree_node *root);
 void free_tree(struct tree_node *p);
 
 int getword(char *word, int limit, int* line_number);
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
 		if(!binsearch(word, noise_words, noise_count))
 			addtree(&root, word, line);
 
-	treeprint(root);
+	iterate_tree(root);
 
 	// free memory
 	free_tree(root);
@@ -128,8 +128,10 @@ struct tree_node *tree_node_alloc(char *word)
 {
 	struct tree_node *p = (struct tree_node*)malloc(sizeof(struct tree_node));
 
-	if(!p)
+	if(!p){
 		printf("Error in tree_node_alloc: malloc failed!\n");
+		return p;
+	}
 
 	p->word = strdup(word);
 	p->left = p->right = NULL;
@@ -205,16 +207,16 @@ void print_list(struct list *p)
 		printf(" %lu", l->line_number);
 }
 
-void treeprint(struct tree_node *p)
+void iterate_tree(struct tree_node *p)
 {
 	if(p != NULL){
-		treeprint(p->left);
+		iterate_tree(p->left);
 
 		printf("%s:", p->word);
 		print_list(p->lines_list);
 		printf("\n");
 
-		treeprint(p->right);
+		iterate_tree(p->right);
 	}
 }
 

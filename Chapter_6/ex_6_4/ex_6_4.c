@@ -34,13 +34,14 @@ void vector_free(struct vector *v);
 int vector_add(struct vector *v, struct tree_node * const n);
 
 /* Returns a pointer to a node with a given word, or if missing -
- * a pointer to a pointer in which node coud be allocated*/
+ * a pointer to a pointer in which node could be allocated*/
 struct tree_node **search_tree(struct tree_node **p, char *word);
 
-/*Iteratres over the tree applying op for each node*/
+/*Iterates over the tree applying op for each node*/
 void iterate_tree(struct tree_node *root, tree_node_fn op);
 void print_tree_node(struct tree_node *node);
 void free_tree(struct tree_node *p);
+int tree_node_count_cmp(const void *l, const void *r);
 
 int getword(char *word, int limit);
 
@@ -69,11 +70,10 @@ int main(int argc, char* argv[])
 			(*node)->count += 1;
 	}
 
-	//qsort(nodes->begin, nodes->size, sizeof(struct tree_node*), cmp);
+	qsort(nodes->begin, nodes->size, sizeof(struct tree_node*), tree_node_count_cmp);
+
 	for(int i = 0; i < nodes->size; ++i)
 		print_tree_node(nodes->begin[i]);
-
-	//iterate_tree(root, print_tree_node);
 
 	// free memory
 	free_tree(root);
@@ -139,6 +139,19 @@ void free_tree(struct tree_node *p)
 		free_tree(p->right);
 		tree_node_free(p->right);
 	}
+}
+
+int tree_node_count_cmp(const void *left_node, const void *right_node)
+{
+	struct tree_node *l = (*(struct tree_node **)left_node);
+	struct tree_node *r = (*(struct tree_node **)right_node);
+
+	int cond = r->count - l->count;
+
+	if(cond == 0)
+		return strcmp(l->word, r->word);
+
+	return cond;
 }
 
 void tree_node_free(struct tree_node *p)
