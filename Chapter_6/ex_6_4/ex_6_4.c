@@ -17,16 +17,25 @@ struct tree_node {
 	struct tree_node *right;
 };
 
+struct vector {
+	struct tree_node **begin; // non owning pointer
+	size_t size;
+	size_t capacity;
+};
+
 #define MAXWORD 100
 typedef void (*tree_node_fn)(struct tree_node*);
 
 struct tree_node *tree_node_alloc(char *word, size_t initial_count);
 void tree_node_free(struct tree_node *p);
 
+struct vector *vector_alloc(int capacity);
+void vector_free(struct vector *v);
+int vector_add(struct vector *v, struct tree_node * const n);
+
 /* Returns a pointer to a node with a given word, or if missing -
  * a pointer to a pointer in which node coud be allocated*/
 struct tree_node **search_tree(struct tree_node **p, char *word);
-struct tree_node *addtree(struct tree_node **p, char *word);
 
 /*Iteratres over the tree applying op for each node*/
 void iterate_tree(struct tree_node *root, tree_node_fn op);
@@ -42,19 +51,34 @@ int main(int argc, char* argv[])
 {
 	char word[MAXWORD];
 	struct tree_node *root = NULL;
+	struct tree_node **node = NULL;
+	struct vector *nodes = vector_alloc(1);
 
-	size_t count = 1;
+	if(!nodes)
+		return 1;
+
 	while (getword(word, MAXWORD) != EOF){
-		addtree(&root, word);
-		++count;
+		if(*(node = search_tree(&root, word)) == NULL){
+			*node = tree_node_alloc(word, 1);
+			if(!vector_add(nodes, *node)){
+				printf("Can't go without vector. Abort ...");
+				return 1;
+			}
+		}
+		else
+			(*node)->count += 1;
 	}
 
-	//allocate arraur fot count tree_node's
-	iterate_tree(root, print_tree_node);
+	//qsort(nodes->begin, nodes->size, sizeof(struct tree_node*), cmp);
+	for(int i = 0; i < nodes->size; ++i)
+		print_tree_node(nodes->begin[i]);
+
+	//iterate_tree(root, print_tree_node);
 
 	// free memory
 	free_tree(root);
 	tree_node_free(root);
+	vector_free(nodes);
 
 	return 0;
 }
@@ -74,18 +98,6 @@ struct tree_node **search_tree(struct tree_node **node, char *word)
 		return search_tree(&(p->left), word);
 
 	return search_tree(&(p->right), word);
-}
-
-struct tree_node *addtree(struct tree_node **root, char *word)
-{
-	struct tree_node **node = search_tree(root, word);
-
-	if(*node == NULL)
-		*node = tree_node_alloc(word, 1);
-	else
-		(*node)->count += 1;
-
-	return *node;
 }
 
 struct tree_node *tree_node_alloc(char *word, size_t initial_count)
@@ -112,6 +124,7 @@ void iterate_tree(struct tree_node *p, tree_node_fn op)
 		iterate_tree(p->right, op);
 	}
 }
+
 void print_tree_node(struct tree_node *p)
 {
 	printf("%s: %lu\n", p->word, p->count);
@@ -135,6 +148,61 @@ void tree_node_free(struct tree_node *p)
 
 	free(p->word);
 	free(p);
+}
+
+struct vector *vector_alloc(int capacity)
+{
+	struct vector *p = (struct vector*)malloc(sizeof(struct vector));
+
+	if(!p){
+		printf("Error in vector_alloc: malloc failed\n");
+		return p;
+	}
+
+	p->begin = (struct tree_node**)malloc(capacity * sizeof(struct tree_node));
+
+	if(!p->begin){
+		printf("Error in vector_alloc: malloc for inner array failed\n");
+	}
+
+	p->capacity = capacity;
+	p->size = 0;
+
+	return p;
+}
+
+void vector_free(struct vector *v)
+{
+	if(!v)
+		return;
+
+	if(v->begin)
+		free(v->begin);
+
+	free(v);
+}
+
+int vector_add(struct vector *v, struct tree_node * const n)
+{
+	if(!v){
+		printf("Error in vector_add: vector is NULL\n");
+		return 0;
+	}
+
+	if(v->size >= v->capacity){
+		int new_capacity = v->capacity * 2;
+		void *new_begin = realloc(v->begin, sizeof(struct tree_node*) * new_capacity);
+		if(!new_begin){
+			printf("Error in vector_add: realloc failed\n");
+			return 0;
+		}
+		v->begin = (struct tree_node**)new_begin;
+		v->capacity = new_capacity;
+	}
+
+	v->begin[v->size++] = n;
+
+	return 1;
 }
 
 int getword(char *word, int lim)
