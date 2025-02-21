@@ -110,14 +110,14 @@ int getword(char *word, int lim)
 				continue;
 			}
 		}
-        else if(c == '#'){ // this is a preprocessor 
-            skip_stdin_till("\n");
-            continue;
-        }
-        else if (c == '"') { // this is a string literal begin
-            skip_stdin_till("\"");
-            continue;
-        }
+		else if(c == '#'){ // this is a preprocessor 
+		    skip_stdin_till("\n");
+		    continue;
+		}
+		else if (c == '"') { // this is a string literal begin
+		    skip_stdin_till("\"");
+		    continue;
+		}
 
 		if (c != EOF)
 			*w++ = c;
