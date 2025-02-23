@@ -12,40 +12,45 @@
 #define MAXWORD 100
 typedef int (*stop_cmp)(int);
 
-int getword(char *, int, stop_cmp);
+int getword(char *, int);
+int read_literal(char*, char);
+int read_defn(char *, int);
 int skip_stdin_till(const char* pattern);
-/*Returns 1  is next chars in std in equal to str(null-terminating char not included).
-  Otherwise returns 0*/
-int next_stdin_equals_to(const char *str);
 int getch(void);
 void ungetch(int);
-int is_new_line(int c) { return c == '\n';}
-
 
 int main()
 {
-	char name[MAXWORD];
+	char word[MAXWORD];
 	char value[MAXWORD];
+	int c = 0;
 
-	while(getword(name, MAXWORD, isspace) != EOF){
-		if(strcmp(name, "#define") == 0 &&
-		getword(name, MAXWORD, isspace) != EOF &&
-		getword(value, MAXWORD, is_new_line) != EOF)
-		{
-			printf("%s %s\n", name, value);
+	while((c = getword(word, MAXWORD)) != EOF){
+		if(c == '\n'){
+			printf("\n");
+			continue;
 		}
+		if(!strcmp(word, "#define")){
+			if(getword(word, MAXWORD) != EOF && read_defn(value, MAXWORD) != EOF)
+				printf("[%s:%s]", word, value);
+		}
+		else
+			printf("%s", word);
 	}
 }
 
-int getword(char *word, int lim, stop_cmp cmp)
+int getword(char *word, int lim)
 {
 	char *w = word;
 	*w = '\0'; // consider the buffer as empty at start
 	int c = 0;
 
 	while(c != EOF && !word[0]){
-		while (isspace(c = getch()))
-			;
+		while (isspace(c = getch())){
+			if(c == '\n')
+				return c;
+			printf("%c", c);
+		}
 
 		if(c == EOF)
 			return EOF;
@@ -53,6 +58,7 @@ int getword(char *word, int lim, stop_cmp cmp)
 		if(c == '/'){ // possible comment section
 			if((c = getch()) == '/'){ // this is line comment
 				skip_stdin_till("\n");
+				ungetch('\n');
 				continue;
 			}
 			else if(c == '*'){ // this is a block comment
@@ -62,11 +68,18 @@ int getword(char *word, int lim, stop_cmp cmp)
 			ungetch(c);
 			c = '/';
 		}
+		else if(c == '"'){
+			*w++ = c;
+			return read_literal(w, '\"');
+		}
 
 		*w++ = c;
 
+		if(!isalnum(c) && c != '#') //write # and directive in one word
+			break;
+
 		for ( ; --lim > 0; w++)
-			if (cmp(*w = getch())) {
+			if (!isalnum(*w = getch()) && *w != '_') {
 				ungetch(*w);
 				break;
 			}
@@ -75,6 +88,39 @@ int getword(char *word, int lim, stop_cmp cmp)
 	*w = '\0';
 
 	return word[0];
+}
+
+int read_literal(char *buf, char stop_char)
+{
+	while((*buf = getch()) != EOF && *buf != stop_char){
+		if(*buf == '\\') //escape
+			*(++buf) = getchar();
+		++buf;
+	}
+	if(*buf == EOF)
+		ungetch(EOF);
+
+	*(++buf) = '\0';
+
+	return *buf;
+}
+
+int read_defn(char *defn, int lim)
+{
+	int c;
+	char word[MAXWORD];
+
+	while((c = getword(word, lim)) != EOF && c != '\n'){
+		//printf("===>%s\n", word);
+		char *w = &word[0];
+		while((*defn = *w)){
+			++defn;
+			++w;
+		}
+	}
+	if(c == '\n')
+		printf("\n");
+	return c;
 }
 
 int skip_stdin_till(const char* pattern)
@@ -112,19 +158,6 @@ int skip_stdin_till(const char* pattern)
 	}
 
 	return 1;
-}
-
-int next_stdin_equals_to(const char *str)
-{
-	int res = 1; //true
-
-	for(;*str && (res = (*str == getchar())); ++str)
-		;
-
-	if(*str == EOF)
-		ungetch(EOF);
-
-	return res;
 }
 
 #define BUFERSIZE 10
