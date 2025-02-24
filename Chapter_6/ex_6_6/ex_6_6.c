@@ -13,7 +13,7 @@
 typedef int (*stop_cmp)(int);
 
 int getword(char *, int);
-int read_literal(char*, char);
+int read_literal(char*, char stop_char, int lim);
 int read_defn(char *, int);
 int skip_stdin_till(const char* pattern);
 int getch(void);
@@ -26,10 +26,6 @@ int main()
 	int c = 0;
 
 	while((c = getword(word, MAXWORD)) != EOF){
-		if(c == '\n'){
-			printf("\n");
-			continue;
-		}
 		if(!strcmp(word, "#define")){
 			if(getword(word, MAXWORD) != EOF && read_defn(value, MAXWORD) != EOF)
 				printf("[%s:%s]", word, value);
@@ -47,9 +43,9 @@ int getword(char *word, int lim)
 
 	while(c != EOF && !word[0]){
 		while (isspace(c = getch())){
+			printf("%c", c);
 			if(c == '\n')
 				return c;
-			printf("%c", c);
 		}
 
 		if(c == EOF)
@@ -68,9 +64,9 @@ int getword(char *word, int lim)
 			ungetch(c);
 			c = '/';
 		}
-		else if(c == '"'){
+		else if(c == '"' || c == '\''){
 			*w++ = c;
-			return read_literal(w, '\"');
+			return read_literal(w, c, MAXWORD - 1); 
 		}
 
 		*w++ = c;
@@ -90,19 +86,23 @@ int getword(char *word, int lim)
 	return word[0];
 }
 
-int read_literal(char *buf, char stop_char)
+int read_literal(char *buf, char stop_char, int lim)
 {
-	while((*buf = getch()) != EOF && *buf != stop_char){
-		if(*buf == '\\') //escape
-			*(++buf) = getchar();
-		++buf;
+	char *p = &buf[0];
+
+	while(--lim && (*p = getch()) != EOF && *p != stop_char){
+		if(*p == '\\') //escape
+			*(++p) = getchar();
+		++p;
 	}
-	if(*buf == EOF)
+	if(*p == EOF){
 		ungetch(EOF);
+		return 0;
+	}
 
-	*(++buf) = '\0';
+	*(++p) = '\0';
 
-	return *buf;
+	return buf[0];
 }
 
 int read_defn(char *defn, int lim)
@@ -110,16 +110,16 @@ int read_defn(char *defn, int lim)
 	int c;
 	char word[MAXWORD];
 
-	while((c = getword(word, lim)) != EOF && c != '\n'){
+	while(lim && (c = getword(word, lim)) != EOF && c != '\n'){
 		//printf("===>%s\n", word);
 		char *w = &word[0];
 		while((*defn = *w)){
 			++defn;
 			++w;
+			--lim;
 		}
 	}
-	if(c == '\n')
-		printf("\n");
+
 	return c;
 }
 
@@ -175,7 +175,5 @@ void ungetch(int c) /*push character back to input*/
 	if(bufp >= BUFERSIZE)
 		printf("Error: ungetch - too many charackters\n");
 	else
-	{
 		buf[bufp++] = c;
-	}
 }
