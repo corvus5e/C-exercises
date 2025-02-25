@@ -4,11 +4,16 @@
 #define COUNT 5// This is 5
 #define LOG /*This is comment*/printf("I was here!\n");
 #define  /*Comment*/	   LOG2 	  printf( "And I was here" );     
+#define MSG "Hello from define\n"
+
+static int arr[N];
+
+#define N 777
 
 int main()
 {
 	char* msg = "Hello, \"world!\"";
-	printf("%d\n", COUNT);
+	printf("%d %s\n", COUNT, MSG);
 	int a = 5 / 4*N;	// This is a
 	int b=3/2;
 	int c=3*COUNT/a;
