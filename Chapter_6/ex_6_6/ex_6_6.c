@@ -28,7 +28,7 @@ void print_hashtab();
 unsigned int hash(char*);
 
 int getword(char *, int);
-int read_literal(char*, char stop_char, int lim);
+int read_till_char(char*, char stop_char, int lim);
 int read_defn(char *, int);
 int skip_stdin_till(const char* pattern);
 int getch(void);
@@ -44,13 +44,15 @@ int main()
 	while((c = getword(word, MAXWORD)) != EOF){
 		if(!strcmp(word, "#define")){
 			if(getword(word, MAXWORD) != EOF && read_defn(value, MAXWORD) != EOF){
-				//printf("[%s:%s]", word, value);
+			//	printf("%s", word);
 				install(word, value);
 			}
 		}
 		else if(isalpha(word[0]) && (np = lookup(word))){
 			printf("%s", np->defn);
 		}
+		//else if(isspace(c))
+		//	printf("%c", c);
 		else
 			printf("%s", word);
 	}
@@ -179,7 +181,7 @@ int getword(char *word, int lim)
 		}
 		else if(c == '"' || c == '\''){
 			*w++ = c;
-			return read_literal(w, c, MAXWORD - 1); 
+			return read_till_char(w, c, MAXWORD - 1);
 		}
 
 		*w++ = c;
@@ -199,7 +201,7 @@ int getword(char *word, int lim)
 	return word[0];
 }
 
-int read_literal(char *buf, char stop_char, int lim)
+int read_till_char(char *buf, char stop_char, int lim)
 {
 	char *p = &buf[0];
 
@@ -223,14 +225,12 @@ int read_defn(char *defn, int lim)
 	int c;
 	char word[MAXWORD];
 
-	while(lim && (c = getword(word, lim)) != EOF && c != '\n'){
+	while(lim > 0 && (c = getword(word, lim)) != EOF && c != '\n'){
 		//printf("===>%s\n", word);
 		char *w = &word[0];
-		while((*defn = *w)){
-			++defn;
-			++w;
-			--lim;
-		}
+		for(; --lim && (*defn = *w); ++defn, ++w)
+			;
+		*defn = '\0';
 	}
 
 	return c;

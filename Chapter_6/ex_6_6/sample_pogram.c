@@ -5,6 +5,7 @@
 #define LOG /*This is comment*/printf("I was here!\n");
 #define  /*Comment*/	   LOG2 	  printf( "And I was here" );     
 #define MSG "Hello from define\n"
+#define LOOP {for(int i = 0; i < 10/*Ten*/; ++i){printf("%d ", i);}}
 
 static int arr[N];
 
@@ -23,7 +24,10 @@ int main()
 		// Another comment
 	LOG
 	LOG2
+	LOOP;
+
 	printf("#END!\n");
+
 	return 0;
 }
 // End of src
