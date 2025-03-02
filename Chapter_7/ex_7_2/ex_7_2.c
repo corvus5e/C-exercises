@@ -10,6 +10,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#define MAXLEN 10
+#define MINCOLUMN 7
+
 const char *hex = "[0x%x]";
 const char *oct = "[0%o]";
 const char *dec = "[%d]";
@@ -20,13 +23,24 @@ void read_params(int argc, char *argv[], int *column_lim, const char **non_ascii
 int main(int argc, char *argv[])
 {
 	const char *fmt_switch[2] = {hex, gra};
-	int column_lim = 40;
+	int column_lim = 0;
+	char buf[MAXLEN];
 
 	read_params(argc, argv, &column_lim, &fmt_switch[0]);
 
-	int n;
-	for(int c; (c = getchar()) != EOF;){
-		n = printf(fmt_switch[c < 128], c);
+	int s = 0;
+	for(int c, n; (c = getchar()) != EOF;){
+		n = snprintf(buf, MAXLEN, fmt_switch[c < 128], c);
+		if(column_lim > 0){
+			if(c == '\n')
+				s = 0;
+			else if((s += n) > column_lim){
+				putc('\n', stdout);
+				s = n;
+			}
+		}
+
+		fputs(buf, stdout);
 	}
 }
 
@@ -42,10 +56,13 @@ void read_params(int argc, char *argv[], int *column_lim, const char **non_ascii
 				case 'h': *non_ascii_fmt = hex; break;
 				case 'o': *non_ascii_fmt = oct; break;
 				case 'd': *non_ascii_fmt = dec; break;
+				case 'c': *non_ascii_fmt = gra; break;
 			}
 		}
 		else if(isnumber(first_char)){
 			*column_lim = atoi(argv[i]);
+			if(*column_lim < MINCOLUMN)
+				*column_lim = MINCOLUMN;
 		}
 	}
 	//printf("Params:\nfmt:%s\nlim:%d\n", *non_ascii_fmt, *column_lim);
