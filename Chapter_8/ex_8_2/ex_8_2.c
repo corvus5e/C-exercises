@@ -111,9 +111,9 @@ int _fillbuf(FILE *fp)
 
 	fp->ptr = fp->base;
 
-	fp->ctn = read(fp->fd, fp->ptr, BUFSIZE);
+	fp->ctn = read(fp->fd, fp->ptr, bufsize);
 
-	if(--fp->ctn <= 0)
+	if(--fp->ctn < 0)
 	{
 		if(fp->ctn == -1)
 			fp->flags.eof = 1;
@@ -124,7 +124,6 @@ int _fillbuf(FILE *fp)
 
 		return EOF;
 	}
-
 
 	return *(fp->ptr++);
 }
