@@ -34,10 +34,13 @@ extern FILE _iob[OPEN_MAX];
 int _fillbuf(FILE*);
 int _flushbuf(int, FILE*);
 
+int fflush(FILE*);
+int putc(int x, FILE *p);
+
 #define getc(p) 	(--(p)->ctn >= 0 \
 			? (unsigned char) *(p)->ptr++ : _fillbuf(p))
 
-#define putc(x, p)	(--(p)->ctn >= 0 \
+#define pautc(x, p)	(--(p)->ctn >= 0 \
 			? *(p)->ptr++ = (x) : _flushbuf((x), p))
 
 #define getchar()	getc(stdin)
@@ -45,6 +48,7 @@ int _flushbuf(int, FILE*);
 #define putchar(x)	putc((x), stdout)
 
 FILE* fopen(const char *name, char *mode);
+int fclose(FILE*);
 
 int main(){
 	FILE *f = fopen("test.txt", "r");
@@ -52,6 +56,8 @@ int main(){
 	int c = 0;
 	while((c = getc(stdin)) > 0)
 		putc(c, d);
+
+	fclose(d);
 
 	return 0;
 }
@@ -99,6 +105,18 @@ FILE* fopen(const char *name, char *mode)
 	return fp;
 }
 
+int fclose(FILE *fp)
+{
+	if(fflush(fp) < 0)
+		return EOF;
+
+	free(fp->base);
+	fp->ptr = fp->base = NULL;
+	fp->flags.write = fp->flags.read = fp->flags.eof = fp->flags.err = fp->flags.unbuf = 0;
+
+	return 0;
+}
+
 /* _fillbuf: allocate and fill input buffer*/
 int _fillbuf(FILE *fp)
 {
@@ -130,21 +148,55 @@ int _fillbuf(FILE *fp)
 	return *(fp->ptr++);
 }
 
-int _flushbuf(int x, FILE *fp)
+int fflush(FILE *fp)
 {
 	if(fp->flags.eof || fp->flags.err || !fp->flags.write)
 		return EOF;
 
-	//NOTE: Write directly to file.
-	// This should be a separate function
+	if(fp->flags.unbuf)
+		return 0; /* No need to flush unbuffered output */
+
+	if(!fp->base)
+		return EOF;
+
+	if(!fp->ptr)
+		return EOF;
+
+	size_t distance = fp->ptr - fp->base;
+
+	if(write(fp->fd, fp->base, distance == 0 ? 1 : distance) < 0){
+			fp->flags.err = 1;
+			return EOF;
+	}
+
+	fp->ptr = fp->base;
+	fp->ctn = BUFSIZE;
+
+	return 0;
+}
+
+int putc(int x, FILE *fp)
+{
+	if(fp->flags.eof || fp->flags.err || !fp->flags.write)
+		return EOF;
+
 	if(fp->flags.unbuf){
 		fp->ctn = 0;
 		if(write(fp->fd, &x, 1) < 0){
 			fp->flags.err = 1;
 			return EOF;
 		}
+
 		return x;
 	}
+
+	return (--(fp)->ctn >= 0) ? *(fp)->ptr++ = (x) : _flushbuf(x, fp);
+}
+
+int _flushbuf(int x, FILE *fp)
+{
+	if(fp->flags.eof || fp->flags.err || !fp->flags.write)
+		return EOF;
 
 	size_t bufsize = BUFSIZE;
 
