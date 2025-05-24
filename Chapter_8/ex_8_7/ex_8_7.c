@@ -1,5 +1,7 @@
 /*
- * Exercise 8-7. 
+ * Exercise 8-7. malloc accepts a size request without checking its plausibility;
+ * free believes that the block it is asked to free contains a valid size field.
+ * Improve these routines so they make more pains with error checking.
 */
 
 #define _GNU_SOURCE 1 /*NOTE: to avoid  warning: implicit declaration of function ‘sbrk’
